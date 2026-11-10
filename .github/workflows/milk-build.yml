@@ -11,6 +11,7 @@ on:
       - "README.md"
       - "package.json"
       - "capacitor.config.json"
+      - "native/**"
       - ".github/workflows/milk-build.yml"
   workflow_dispatch:
 
