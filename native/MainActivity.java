@@ -1,6 +1,7 @@
 package com.milk.backupgallery;
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -8,5 +9,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MediaGalleryPlugin.class);
         super.onCreate(savedInstanceState);
+        WebSettings settings = bridge.getWebView().getSettings();
+        settings.setAllowContentAccess(true);
+        settings.setAllowFileAccess(true);
     }
 }
