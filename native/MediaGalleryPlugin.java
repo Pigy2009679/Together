@@ -4,11 +4,14 @@ import android.Manifest;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.database.ContentObserver;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.util.Base64;
+import android.util.Size;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -16,7 +19,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
-import java.util.ArrayList;
+import java.io.ByteArrayOutputStream;
 
 @CapacitorPlugin(
     name = "MediaGallery",
@@ -107,6 +110,7 @@ public class MediaGalleryPlugin extends Plugin {
             int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE);
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(idCol);
+                Uri itemUri = ContentUris.withAppendedId(collection, id);
                 JSObject item = new JSObject();
                 item.put("id", kind + "-" + id);
                 item.put("name", cursor.getString(nameCol));
@@ -114,9 +118,23 @@ public class MediaGalleryPlugin extends Plugin {
                 item.put("size", cursor.getLong(sizeCol));
                 item.put("mime", cursor.getString(mimeCol));
                 item.put("kind", kind);
-                item.put("uri", ContentUris.withAppendedId(collection, id).toString());
+                item.put("uri", itemUri.toString());
+                item.put("thumbnail", makeThumbnail(itemUri));
                 output.put(item);
             }
+        }
+    }
+
+    private String makeThumbnail(Uri uri) {
+        if (Build.VERSION.SDK_INT < 29) return "";
+        try {
+            Bitmap bitmap = getContext().getContentResolver().loadThumbnail(uri, new Size(320, 320), null);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 76, bytes);
+            bitmap.recycle();
+            return "data:image/jpeg;base64," + Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception ignored) {
+            return "";
         }
     }
 }
