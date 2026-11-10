@@ -12,5 +12,8 @@ public class MainActivity extends BridgeActivity {
         WebSettings settings = bridge.getWebView().getSettings();
         settings.setAllowContentAccess(true);
         settings.setAllowFileAccess(true);
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
     }
 }
