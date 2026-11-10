@@ -22,6 +22,9 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 @CapacitorPlugin(name = "MediaGallery", permissions = {
     @Permission(alias = "media", strings = { Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO }),
@@ -30,6 +33,12 @@ import java.io.ByteArrayOutputStream;
 })
 public class MediaGalleryPlugin extends Plugin {
     private ContentObserver observer;
+
+    private static class MediaEntry {
+        long id, date, size;
+        String name, mime, kind;
+        Uri uri;
+    }
 
     @Override public void load() {
         observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
@@ -55,15 +64,28 @@ public class MediaGalleryPlugin extends Plugin {
         if (!hasMediaPermission()) { call.reject("Photo and video access has not been granted.", "PERMISSION_REQUIRED"); return; }
         int offset = Math.max(0, call.getInt("offset", 0));
         int limit = Math.min(60, Math.max(1, call.getInt("limit", 40)));
-        JSArray result = new JSArray();
         try {
-            int total = count(MediaStore.Images.Media.EXTERNAL_CONTENT_URI) + count(MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
-            int imageCount = count(MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            if (offset < imageCount) queryCollection(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", offset, limit, result);
-            int videoOffset = Math.max(0, offset - imageCount);
-            int remaining = limit - result.length();
-            if (remaining > 0) queryCollection(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", videoOffset, remaining, result);
-            call.resolve(new JSObject().put("items", result).put("total", total).put("offset", offset).put("hasMore", offset + result.length() < total));
+            ArrayList<MediaEntry> all = new ArrayList<>();
+            collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", all);
+            collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", all);
+            Collections.sort(all, (a, b) -> Long.compare(b.date, a.date));
+            int total = all.size();
+            JSArray result = new JSArray();
+            int end = Math.min(total, offset + limit);
+            for (int i = offset; i < end; i++) {
+                MediaEntry entry = all.get(i);
+                JSObject item = new JSObject();
+                item.put("id", entry.kind + "-" + entry.id);
+                item.put("name", entry.name);
+                item.put("date", entry.date);
+                item.put("size", entry.size);
+                item.put("mime", entry.mime);
+                item.put("kind", entry.kind);
+                item.put("uri", entry.uri.toString());
+                item.put("thumbnail", makeThumbnail(entry.uri));
+                result.put(item);
+            }
+            call.resolve(new JSObject().put("items", result).put("total", total).put("offset", offset).put("hasMore", end < total));
         } catch (Exception e) { call.reject("Could not read your media library: " + e.getMessage()); }
     }
 
@@ -78,7 +100,9 @@ public class MediaGalleryPlugin extends Plugin {
 
     @PluginMethod public void shareMedia(PluginCall call) {
         try {
-            Uri uri = Uri.parse(call.getString("uri", ""));
+            String raw = call.getString("uri");
+            if (raw == null || raw.isEmpty()) { call.reject("No media selected."); return; }
+            Uri uri = Uri.parse(raw);
             String mime = call.getString("mime", "*/*");
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType(mime);
@@ -95,16 +119,9 @@ public class MediaGalleryPlugin extends Plugin {
         return getPermissionState("legacy") == com.getcapacitor.PermissionState.GRANTED;
     }
 
-    private int count(Uri collection) {
-        try (Cursor c = getContext().getContentResolver().query(collection, new String[] { MediaStore.MediaColumns._ID }, null, null, null)) {
-            return c == null ? 0 : c.getCount();
-        }
-    }
-
-    private void queryCollection(Uri collection, String kind, int offset, int limit, JSArray output) {
+    private void collect(Uri collection, String kind, ArrayList<MediaEntry> all) {
         String[] projection = { MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.DATE_ADDED, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE };
-        String order = MediaStore.MediaColumns.DATE_ADDED + " DESC LIMIT " + limit + " OFFSET " + offset;
-        try (Cursor cursor = getContext().getContentResolver().query(collection, projection, null, null, order)) {
+        try (Cursor cursor = getContext().getContentResolver().query(collection, projection, null, null, null)) {
             if (cursor == null) return;
             int idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
             int nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME);
@@ -112,18 +129,15 @@ public class MediaGalleryPlugin extends Plugin {
             int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
             int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE);
             while (cursor.moveToNext()) {
-                long id = cursor.getLong(idCol);
-                Uri itemUri = ContentUris.withAppendedId(collection, id);
-                JSObject item = new JSObject();
-                item.put("id", kind + "-" + id);
-                item.put("name", cursor.getString(nameCol));
-                item.put("date", cursor.getLong(dateCol) * 1000L);
-                item.put("size", cursor.getLong(sizeCol));
-                item.put("mime", cursor.getString(mimeCol));
-                item.put("kind", kind);
-                item.put("uri", itemUri.toString());
-                item.put("thumbnail", makeThumbnail(itemUri));
-                output.put(item);
+                MediaEntry entry = new MediaEntry();
+                entry.id = cursor.getLong(idCol);
+                entry.name = cursor.getString(nameCol);
+                entry.date = cursor.getLong(dateCol) * 1000L;
+                entry.size = cursor.getLong(sizeCol);
+                entry.mime = cursor.getString(mimeCol);
+                entry.kind = kind;
+                entry.uri = ContentUris.withAppendedId(collection, entry.id);
+                all.add(entry);
             }
         }
     }
