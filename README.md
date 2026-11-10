@@ -1,20 +1,20 @@
 # MILK — Backup Gallery
 
-A creamy, simple browser-based backup gallery.
-
-## Run it
-Open `index.html` in a modern browser, or host this repository with GitHub Pages / Vercel. For the installable PWA features, use an HTTPS-hosted version.
+A creamy milk-carton themed browser backup gallery.
 
 ## Features
-- Add multiple files to your gallery
-- Stores backup copies in browser IndexedDB on the current device
-- Image and video previews
-- Search and filter by file type
+- Animated milk carton with a gently moving milk wave and droplets
+- A user-triggered synthesized cow "moo" sound (no external audio files)
+- Add multiple files and save copies in browser IndexedDB
+- Image and video previews, search, and file-type filters
 - Download a saved copy or delete a backup
-- Optional notifications when files are added
+- Optional browser notifications when files are added
+- Responsive layout and reduced-motion support
 
-## Important limitation
-This is a web app, not a native Android app. Browsers do not let a normal website silently monitor every download or read the phone's Downloads folder automatically. Files must be added through the file picker. Phone-wide automatic backup would require a separate native Android implementation with clear user permission.
+## Run it
+Host this repository with GitHub Pages or Vercel (HTTPS recommended), then open the site in a modern browser. The app can also be opened locally, but service-worker/offline installation features require HTTPS or localhost.
 
-## Data
-Backups stay in the browser storage on the device where they were added. Clearing site/browser data may remove them. This is not cloud storage.
+## Important limitations
+This is a web app, not a native Android app. A normal website cannot silently monitor every Android download or automatically read the phone's Downloads folder. Files must be added through the file picker. Phone-wide automatic backup requires a native Android app and clear user permission.
+
+Backups stay in browser storage on the device where they were added. Clearing browser/site data may remove them. This is not cloud storage.
