@@ -68,8 +68,8 @@ public class MediaGalleryPlugin extends Plugin {
         String filter = call.getString("filter", "all");
         try {
             ArrayList<MediaEntry> all = new ArrayList<>();
-            if ("all".equals(filter) || "image".equals(filter)) collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", query, all);
-            if ("all".equals(filter) || "video".equals(filter)) collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", query, all);
+            if (canReadImages() && ("all".equals(filter) || "image".equals(filter))) collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", query, all);
+            if (canReadVideos() && ("all".equals(filter) || "video".equals(filter))) collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", query, all);
             Collections.sort(all, (a, b) -> Long.compare(b.date, a.date));
             int total = all.size();
             JSArray result = new JSArray();
@@ -116,9 +116,21 @@ public class MediaGalleryPlugin extends Plugin {
     }
 
     private boolean hasMediaPermission() {
-        if (Build.VERSION.SDK_INT >= 34) return getPermissionState("media") == com.getcapacitor.PermissionState.GRANTED || getPermissionState("selected") == com.getcapacitor.PermissionState.GRANTED;
-        if (Build.VERSION.SDK_INT >= 33) return getPermissionState("media") == com.getcapacitor.PermissionState.GRANTED;
-        return getPermissionState("legacy") == com.getcapacitor.PermissionState.GRANTED;
+        if (Build.VERSION.SDK_INT >= 34) return canReadImages() || canReadVideos() || getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= 33) return canReadImages() || canReadVideos();
+        return getContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean canReadImages() {
+        if (Build.VERSION.SDK_INT >= 34 && getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED) return true;
+        if (Build.VERSION.SDK_INT >= 33) return getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        return getContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean canReadVideos() {
+        if (Build.VERSION.SDK_INT >= 34 && getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED) return true;
+        if (Build.VERSION.SDK_INT >= 33) return getContext().checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        return getContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
     }
 
     private void collect(Uri collection, String kind, String query, ArrayList<MediaEntry> all) {
