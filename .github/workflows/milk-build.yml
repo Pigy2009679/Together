@@ -1,4 +1,4 @@
-name: MILK Build
+name: MILK Android APK
 
 on:
   push:
@@ -9,6 +9,8 @@ on:
       - "manifest.webmanifest"
       - "sw.js"
       - "README.md"
+      - "package.json"
+      - "capacitor.config.json"
       - ".github/workflows/milk-build.yml"
   workflow_dispatch:
 
@@ -16,58 +18,50 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Validate and package MILK
+  build-apk:
+    name: Build MILK Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Check required files
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Prepare web app
         run: |
-          test -f index.html
-          test -f manifest.webmanifest
-          test -f sw.js
-          test -f README.md
+          mkdir -p www
+          cp index.html manifest.webmanifest sw.js www/
+          npx cap add android
 
-      - name: Validate HTML and app scripts
+      - name: Sync Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
         run: |
-          python3 - <<'PY'
-          from html.parser import HTMLParser
-          from pathlib import Path
-          import re
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
 
-          source = Path("index.html").read_text(encoding="utf-8")
-
-          class CheckHTML(HTMLParser):
-              pass
-
-          CheckHTML().feed(source)
-          required = ["id=\"picker\"", "id=\"gallery\"", "function refresh()", "function render()", "function moo()"]
-          missing = [item for item in required if item not in source]
-          if missing:
-              raise SystemExit("Missing expected app features: " + ", ".join(missing))
-
-          scripts = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
-          if not scripts:
-              raise SystemExit("No application script found")
-          Path("/tmp/milk-app.js").write_text("\n".join(scripts), encoding="utf-8")
-          print("HTML parsed and required MILK features found.")
-          PY
-          node --check /tmp/milk-app.js
-
-      - name: Validate web manifest
-        run: python3 -m json.tool manifest.webmanifest > /dev/null
-
-      - name: Package MILK ZIP
-        run: |
-          mkdir -p dist
-          zip -r dist/MILK-backup-gallery.zip index.html manifest.webmanifest sw.js README.md
-
-      - name: Upload downloadable build
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: MILK-backup-gallery
-          path: dist/MILK-backup-gallery.zip
+          name: MILK-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
