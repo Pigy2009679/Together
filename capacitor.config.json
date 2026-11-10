@@ -1,0 +1,6 @@
+{
+  "appId": "com.milk.backupgallery",
+  "appName": "MILK",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
