@@ -71,18 +71,36 @@ jobs:
           cp native/ic_milk_carton.xml android/app/src/main/res/drawable/
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          p = Path("android/app/src/main/AndroidManifest.xml")
-          s = p.read_text()
-          permissions = """
-              <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-              <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-          """
-          s = re.sub(r'(<manifest[^>]*>)', lambda m: m.group(1) + permissions, s, count=1)
-          s = re.sub(r'<application\b', '<application android:icon="@drawable/ic_milk_carton"', s, count=1)
-          p.write_text(s)
+          import xml.etree.ElementTree as ET
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          android_ns = 'http://schemas.android.com/apk/res/android'
+          ET.register_namespace('android', android_ns)
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          permissions = [
+              ('android.permission.READ_MEDIA_IMAGES', None),
+              ('android.permission.READ_MEDIA_VIDEO', None),
+              ('android.permission.READ_MEDIA_VISUAL_USER_SELECTED', None),
+              ('android.permission.READ_EXTERNAL_STORAGE', '32'),
+          ]
+          existing = {item.get('{' + android_ns + '}name') for item in root.findall('uses-permission')}
+          for name, max_sdk in permissions:
+              if name in existing:
+                  continue
+              item = ET.Element('uses-permission')
+              item.set('{' + android_ns + '}name', name)
+              if max_sdk:
+                  item.set('{' + android_ns + '}maxSdkVersion', max_sdk)
+              root.insert(0, item)
+
+          application = root.find('application')
+          if application is None:
+              raise SystemExit('AndroidManifest.xml has no application element')
+          application.set('{' + android_ns + '}icon', '@drawable/ic_milk_carton')
+          tree.write(manifest, encoding='utf-8', xml_declaration=True)
+          ET.parse(manifest)
+          print('Android manifest validated; milk carton icon and media permissions configured.')
           PY
 
       - name: Build debug APK
