@@ -61,6 +61,29 @@ jobs:
       - name: Sync Android project
         run: npx cap sync android
 
+      - name: Install native gallery bridge and milk icon
+        run: |
+          mkdir -p android/app/src/main/java/com/milk/backupgallery
+          mkdir -p android/app/src/main/res/drawable
+          cp native/MediaGalleryPlugin.java android/app/src/main/java/com/milk/backupgallery/
+          cp native/MainActivity.java android/app/src/main/java/com/milk/backupgallery/
+          cp native/ic_milk_carton.xml android/app/src/main/res/drawable/
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          permissions = """
+              <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+              <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+          """
+          s = re.sub(r'(<manifest[^>]*>)', lambda m: m.group(1) + permissions, s, count=1)
+          s = re.sub(r'<application\\b', '<application android:icon="@drawable/ic_milk_carton"', s, count=1)
+          p.write_text(s)
+          PY
+
       - name: Build debug APK
         working-directory: android
         run: |
