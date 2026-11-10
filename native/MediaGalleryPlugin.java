@@ -23,9 +23,9 @@ import java.util.ArrayList;
     permissions = {
         @Permission(alias = "media", strings = {
             Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VIDEO,
-            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            Manifest.permission.READ_MEDIA_VIDEO
         }),
+        @Permission(alias = "selected", strings = { Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED }),
         @Permission(alias = "legacy", strings = { Manifest.permission.READ_EXTERNAL_STORAGE })
     }
 )
@@ -51,7 +51,7 @@ public class MediaGalleryPlugin extends Plugin {
     public void requestAccess(PluginCall call) {
         String alias = Build.VERSION.SDK_INT >= 33 ? "media" : "legacy";
         if (Build.VERSION.SDK_INT >= 34) {
-            requestPermissionForAlias(alias, call, "permissionResult");
+            requestPermissionForAliases(new String[] { "media", "selected" }, call, "permissionResult");
         } else {
             requestPermissionForAlias(alias, call, "permissionResult");
         }
@@ -73,12 +73,15 @@ public class MediaGalleryPlugin extends Plugin {
         }
     }
 
-    @PluginMethod
+    @com.getcapacitor.annotation.PermissionCallback
     public void permissionResult(PluginCall call) {
         call.resolve(new JSObject().put("granted", hasMediaPermission()));
     }
 
     private boolean hasMediaPermission() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            return getPermissionState("media") == com.getcapacitor.PermissionState.GRANTED || getPermissionState("selected") == com.getcapacitor.PermissionState.GRANTED;
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             return getPermissionState("media") == com.getcapacitor.PermissionState.GRANTED;
         }
