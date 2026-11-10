@@ -64,10 +64,12 @@ public class MediaGalleryPlugin extends Plugin {
         if (!hasMediaPermission()) { call.reject("Photo and video access has not been granted.", "PERMISSION_REQUIRED"); return; }
         int offset = Math.max(0, call.getInt("offset", 0));
         int limit = Math.min(60, Math.max(1, call.getInt("limit", 40)));
+        String query = call.getString("query", "").trim();
+        String filter = call.getString("filter", "all");
         try {
             ArrayList<MediaEntry> all = new ArrayList<>();
-            collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", all);
-            collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", all);
+            if ("all".equals(filter) || "image".equals(filter)) collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image", query, all);
+            if ("all".equals(filter) || "video".equals(filter)) collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video", query, all);
             Collections.sort(all, (a, b) -> Long.compare(b.date, a.date));
             int total = all.size();
             JSArray result = new JSArray();
@@ -119,9 +121,11 @@ public class MediaGalleryPlugin extends Plugin {
         return getPermissionState("legacy") == com.getcapacitor.PermissionState.GRANTED;
     }
 
-    private void collect(Uri collection, String kind, ArrayList<MediaEntry> all) {
+    private void collect(Uri collection, String kind, String query, ArrayList<MediaEntry> all) {
         String[] projection = { MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.DATE_ADDED, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE };
-        try (Cursor cursor = getContext().getContentResolver().query(collection, projection, null, null, null)) {
+        String selection = query.isEmpty() ? null : MediaStore.MediaColumns.DISPLAY_NAME + " LIKE ?";
+        String[] selectionArgs = query.isEmpty() ? null : new String[] { "%" + query.replace("%", "\\%").replace("_", "\\_") + "%" };
+        try (Cursor cursor = getContext().getContentResolver().query(collection, projection, selection, selectionArgs, null)) {
             if (cursor == null) return;
             int idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
             int nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME);
