@@ -1,0 +1,73 @@
+name: MILK Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "README.md"
+      - ".github/workflows/milk-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Validate and package MILK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check required files
+        run: |
+          test -f index.html
+          test -f manifest.webmanifest
+          test -f sw.js
+          test -f README.md
+
+      - name: Validate HTML and app scripts
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import re
+
+          source = Path("index.html").read_text(encoding="utf-8")
+
+          class CheckHTML(HTMLParser):
+              pass
+
+          CheckHTML().feed(source)
+          required = ["id=\"picker\"", "id=\"gallery\"", "function refresh()", "function render()", "function moo()"]
+          missing = [item for item in required if item not in source]
+          if missing:
+              raise SystemExit("Missing expected app features: " + ", ".join(missing))
+
+          scripts = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
+          if not scripts:
+              raise SystemExit("No application script found")
+          Path("/tmp/milk-app.js").write_text("\n".join(scripts), encoding="utf-8")
+          print("HTML parsed and required MILK features found.")
+          PY
+          node --check /tmp/milk-app.js
+
+      - name: Validate web manifest
+        run: python3 -m json.tool manifest.webmanifest > /dev/null
+
+      - name: Package MILK ZIP
+        run: |
+          mkdir -p dist
+          zip -r dist/MILK-backup-gallery.zip index.html manifest.webmanifest sw.js README.md
+
+      - name: Upload downloadable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: MILK-backup-gallery
+          path: dist/MILK-backup-gallery.zip
+          if-no-files-found: error
+          retention-days: 30
