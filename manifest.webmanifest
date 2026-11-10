@@ -1,0 +1,9 @@
+{
+  "name": "MILK Backup Gallery",
+  "short_name": "MILK",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#f5f1e8",
+  "description": "Your soft, simple backup gallery."
+}
