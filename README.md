@@ -1,20 +1,21 @@
-# MILK — Backup Gallery
+# MILK — Android Backup Gallery
 
-A creamy milk-carton themed browser backup gallery.
+MILK is a creamy milk-carton themed backup gallery packaged as an Android APK using Capacitor.
+
+## Build the APK
+1. Open the **Actions** tab.
+2. Select **MILK Android APK**.
+3. Select **Run workflow** if a run has not started automatically.
+4. Open the completed run and download the **MILK-Android-APK** artifact.
+5. Extract the artifact ZIP to get `app-debug.apk`, then install it on an Android device.
+
+The workflow builds a debug APK for testing. A signed release APK/AAB requires a separately configured signing key.
 
 ## Features
-- Animated milk carton with a gently moving milk wave and droplets
-- A user-triggered synthesized cow "moo" sound (no external audio files)
-- Add multiple files and save copies in browser IndexedDB
-- Image and video previews, search, and file-type filters
-- Download a saved copy or delete a backup
-- Optional browser notifications when files are added
-- Responsive layout and reduced-motion support
-
-## Run it
-Host this repository with GitHub Pages or Vercel (HTTPS recommended), then open the site in a modern browser. The app can also be opened locally, but service-worker/offline installation features require HTTPS or localhost.
+- Animated milk carton, liquid wave and droplets
+- Tap-to-play synthesized cow moo sound
+- Add files to the gallery, preview, search, filter, download copies and delete backups
+- Browser-style IndexedDB storage inside the app's WebView
 
 ## Important limitations
-This is a web app, not a native Android app. A normal website cannot silently monitor every Android download or automatically read the phone's Downloads folder. Files must be added through the file picker. Phone-wide automatic backup requires a native Android app and clear user permission.
-
-Backups stay in browser storage on the device where they were added. Clearing browser/site data may remove them. This is not cloud storage.
+This APK wraps the current web gallery. It does not yet automatically monitor all Android downloads or copy every file in the background. That requires additional native Android download/file integration and clear user permissions. Backups are stored locally in the app's data and may be lost if app data is cleared or the app is uninstalled.
